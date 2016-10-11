@@ -10,14 +10,27 @@ import {
 
 const VALID_LEVELS = new Set(LEVEL_MAP.values());
 
-function intent({DOM, word$}) {
-  let key$ = DOM
+function isLetterKey(code) {
+  return code >= 65 && code <= 90;
+}
+
+function intent(sources) {
+  const {DOM, keydown, word$} = sources;
+
+  let keyPresses$ = keydown
+    .map(e => e.keyCode)
+    .filter(isLetterKey)
+    .map(code => String.fromCharCode(code).toLowerCase());
+
+  let keyClicks$ = DOM
     .select('.keyboard-button')
     .events('click')
     .map(e => e.target.getAttribute('data-char'));
 
+  let keys$ = xs.merge(keyPresses$, keyClicks$);
+
   let guesses$ = word$.map(
-    () => key$.fold(
+    () => keys$.fold(
       (set, next) => set.add(next), new Set()
     )
   ).flatten().remember();
@@ -86,8 +99,8 @@ function view(state$) {
   });
 }
 
-function keyboard({DOM, word$}) {
-  let {guesses$, strikes$, isGameOver$} = intent({DOM, word$});
+function keyboard(sources) {
+  let {guesses$, strikes$, isGameOver$} = intent(sources);
   let vtree$ = view(model({guesses$, isGameOver$}));
 
   return {
